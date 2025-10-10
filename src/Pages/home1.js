@@ -8,7 +8,7 @@ const Home = () => {
     if (!currentUser) {
       return <div className="text-2xl font-bold pt-14">Loading...</div>;
     }
-//fixes the logout error triggerd by: trying to access currentUser.displayName when currentUser is null  
+//fixes the logout error triggerd by: trying to access currentUser.displayName when currentUser is null hello
     return (
       <div className="text-2xl font-bold pt-14">
         <Header />
