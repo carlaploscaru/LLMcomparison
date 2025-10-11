@@ -1,0 +1,122 @@
+
+.reset-container {
+    width: 100%;
+    min-height: 100vh;
+    background: linear-gradient(135deg, #6366f1, #8b5cf6, #ec4899);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 1.5rem;
+  }
+  
+ 
+  .reset-card {
+    background: white;
+    width: 100%;
+    max-width: 420px;
+    border-radius: 1rem;
+    box-shadow: 0 6px 25px rgba(0, 0, 0, 0.15);
+    padding: 2rem;
+    text-align: center;
+    animation: fadeIn 0.5s ease-in-out;
+  }
+  
+
+  .reset-title {
+    font-size: 1.6rem;
+    font-weight: 700;
+    color: #1e1e2f;
+    margin-bottom: 0.5rem;
+  }
+  
+  .reset-subtitle {
+    color: #555;
+    font-size: 0.9rem;
+    margin-bottom: 1.5rem;
+  }
+  
+
+  .reset-form {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+  }
+  
+  .reset-label {
+    text-align: left;
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: #444;
+  }
+  
+  .reset-input {
+    padding: 0.75rem;
+    border-radius: 0.5rem;
+    border: 1px solid #ccc;
+    font-size: 1rem;
+    outline: none;
+    transition: 0.3s ease;
+  }
+  
+  .reset-input:focus {
+    border-color: #6366f1;
+    box-shadow: 0 0 5px rgba(99, 102, 241, 0.4);
+  }
+  
+  
+  .reset-button {
+    background-color: #6366f1;
+    color: white;
+    padding: 0.75rem;
+    font-size: 1rem;
+    font-weight: 600;
+    border: none;
+    border-radius: 0.5rem;
+    cursor: pointer;
+    transition: 0.3s ease;
+  }
+  
+  .reset-button:hover {
+    background-color: #4f46e5;
+    box-shadow: 0 4px 12px rgba(99, 102, 241, 0.4);
+  }
+  
+  .reset-button:disabled {
+    background-color: #ccc;
+    cursor: not-allowed;
+  }
+  
+
+  .reset-error {
+    color: #ef4444;
+    font-weight: 600;
+    font-size: 0.9rem;
+  }
+  
+  .reset-success {
+    color: #16a34a;
+    font-weight: 600;
+    font-size: 0.9rem;
+  }
+  
+
+  .reset-footer {
+    margin-top: 1rem;
+  }
+  
+  .reset-link {
+    color: #6366f1;
+    text-decoration: none;
+    font-weight: 600;
+  }
+  
+  .reset-link:hover {
+    text-decoration: underline;
+  }
+  
+
+  @keyframes fadeIn {
+    from { opacity: 0; transform: translateY(20px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+  
