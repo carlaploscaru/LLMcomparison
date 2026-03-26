@@ -8,7 +8,8 @@ import torch.nn as nn
 import torch.nn.functional as F
 from torchvision.models import efficientnet_b0, EfficientNet_B0_Weights
 from torchvision import transforms
-from pytorch_grad_cam import GradCAM
+# from pytorch_grad_cam import GradCAM
+from pytorch_grad_cam import GradCAMPlusPlus
 from pytorch_grad_cam.utils.model_targets import ClassifierOutputTarget
 from pytorch_grad_cam.utils.image import show_cam_on_image
 
@@ -81,14 +82,45 @@ class EfficientNetCarla(nn.Module):
         x = self.classifier(x)
         return x
 
+
+def crop_face(pil_img):
+    """Detects and crops the face from the image. Returns original if no face found."""
+    img_cv = cv2.cvtColor(np.array(pil_img), cv2.COLOR_RGB2BGR)
+    
+    # OpenCV built-in face detector
+    detector = cv2.CascadeClassifier(
+        cv2.data.haarcascades + 'haarcascade_frontalface_default.xml'
+    )
+    
+    gray = cv2.cvtColor(img_cv, cv2.COLOR_BGR2GRAY)
+    faces = detector.detectMultiScale(gray, scaleFactor=1.1, minNeighbors=5, minSize=(30, 30))
+    
+    if len(faces) == 0:
+        return pil_img  # no face found, use original
+    
+    # Take the largest face
+    x, y, w, h = max(faces, key=lambda f: f[2] * f[3])
+    
+    # Add 20% padding around the face
+    pad = int(0.2 * max(w, h))
+    x1 = max(0, x - pad)
+    y1 = max(0, y - pad)
+    x2 = min(pil_img.width,  x + w + pad)
+    y2 = min(pil_img.height, y + h + pad)
+    
+    return pil_img.crop((x1, y1, x2, y2))
+
+
+
 # model
 model = EfficientNetCarla(num_classes=7, dropout=0.4)
 checkpoint = torch.load('../model/efficientnet_carla_best.pth', map_location='cpu')
 model.load_state_dict(checkpoint['model_state_dict'])
 model.eval()
 
-target_layers = [model.features[-1]]
-cam = GradCAM(model=model, target_layers=target_layers)
+target_layers = [model.features[4][-1]]
+# cam = GradCAM(model=model, target_layers=target_layers)
+cam = GradCAMPlusPlus(model=model, target_layers=target_layers)
 
 
 transform = transforms.Compose([
@@ -106,6 +138,7 @@ def predict():
         return jsonify({'error': 'No image provided'}), 400
 
     pil_img = Image.open(file.stream).convert('RGB')
+    # pil_img = crop_face(pil_img) 
     input_tensor = transform(pil_img).unsqueeze(0)
 
     with torch.no_grad():
@@ -119,8 +152,21 @@ def predict():
         targets=[ClassifierOutputTarget(class_idx)]
     )[0]
 
+    # original_float = np.array(pil_img.resize((IMG_SIZE, IMG_SIZE)), dtype=np.float32) / 255.0
+    # blended = show_cam_on_image(original_float, grayscale_cam, use_rgb=True)
     original_float = np.array(pil_img.resize((IMG_SIZE, IMG_SIZE)), dtype=np.float32) / 255.0
-    blended = show_cam_on_image(original_float, grayscale_cam, use_rgb=True)
+    # smooth the cam before blending so edges are less harsh
+    grayscale_cam_smooth = cv2.GaussianBlur(grayscale_cam, (15, 15), 0)
+    # normalize after smoothing
+    grayscale_cam_smooth = (grayscale_cam_smooth - grayscale_cam_smooth.min()) / \
+                       (grayscale_cam_smooth.max() - grayscale_cam_smooth.min() + 1e-8)
+    # suppress weak activations — only show top 40% intensity
+    grayscale_cam_smooth = np.where(grayscale_cam_smooth > 0.4, grayscale_cam_smooth, 0.0)
+    
+    # normalize again after smoothing
+    grayscale_cam_smooth = (grayscale_cam_smooth - grayscale_cam_smooth.min()) / \
+                        (grayscale_cam_smooth.max() - grayscale_cam_smooth.min() + 1e-8)
+    blended = show_cam_on_image(original_float, grayscale_cam_smooth, use_rgb=True, image_weight=0.45)
 
     buf = io.BytesIO()
     Image.fromarray(blended).save(buf, format='PNG')
@@ -137,3 +183,6 @@ def predict():
 
 if __name__ == '__main__':
     app.run(port=5000, debug=True)
+
+
+
