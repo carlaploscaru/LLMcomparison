@@ -20,7 +20,7 @@ const Header = () => {
     return (
         <nav>
             {userLoggedIn ?
-                    <><button onClick={handleLogout} className='text-sm text-blue-600 underline'>Logout</button></>
+                    <><button onClick={handleLogout} style={{ margin: '10px 1410px 4px' }} >Logout</button></>
                     :<>
                         <Link className='text-sm text-blue-600 underline' to={'/login'}>Login</Link>
                         <Link className='text-sm text-blue-600 underline' to={'/register'}>Register New Account</Link>

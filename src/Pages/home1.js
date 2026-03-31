@@ -13,9 +13,6 @@ const Home = () => {
     return (
       <div className="pt-14">
         <Header />
-        <p className="text-2xl font-bold px-6 mb-6">
-          Hello {currentUser.displayName || currentUser.email}, you are now logged in.
-        </p>
         <EmotionModel />
       </div>
     );
