@@ -156,12 +156,12 @@
 }
 
 .em-section-label {
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 600;
   color: #94a3b8;
   text-transform: uppercase;
   letter-spacing: 0.06em;
-  margin-bottom: 12px;
+  margin-bottom: 23px;
 }
 
 .em-upload-zone {
@@ -394,4 +394,108 @@
 .em-legend-label {
   font-size: 12px;
   color: #94a3b8;
+}
+
+.em-stats-view {
+  animation: fadeIn 0.4s ease-out;
+}
+
+.em-stats-header {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+  margin-bottom: 24px;
+}
+
+.em-stat-main-card {
+  background: white;
+  padding: 24px;
+  border-radius: 16px;
+  border: 1px solid #e2e8f0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.em-stat-label {
+  font-size: 13px;
+  font-weight: 600;
+  color: #94a3b8;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.em-stat-value {
+  font-size: 32px;
+  font-weight: 700;
+  color: #1e293b;
+  text-transform: capitalize;
+}
+
+.em-stats-body {
+  background: white;
+  padding: 32px;
+  border-radius: 16px;
+  border: 1px solid #e2e8f0;
+}
+
+.em-stat-row {
+  margin-bottom: 24px;
+}
+
+.em-stat-info {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+}
+
+.em-stat-name-group {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.em-stat-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+}
+
+.em-stat-name {
+  font-size: 15px;
+  font-weight: 600;
+  color: #334155;
+  text-transform: capitalize;
+}
+
+.em-stat-percentage {
+  font-size: 14px;
+  font-weight: 700;
+  color: #64748b;
+}
+
+.em-progress-container {
+  height: 8px;
+  background: #f1f5f9;
+  border-radius: 99px;
+  overflow: hidden;
+}
+
+.em-progress-fill {
+  height: 100%;
+  border-radius: 99px;
+  transition: width 0.8s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.em-stat-count {
+  font-size: 12px;
+  color: #94a3b8;
+  margin-top: 6px;
+  font-style: italic;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
 }

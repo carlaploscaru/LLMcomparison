@@ -52,6 +52,59 @@ export default function EmotionModel() {
     handleFile(e.dataTransfer.files[0]);
   };
 
+  const renderStats = () => {
+    const total = history.length;
+    
+    const stats = Object.keys(EMOTION_META).map(key => {
+      const count = history.filter(item => item.emotion === key).length;
+      const percentage = total > 0 ? Math.round((count / total) * 100) : 0;
+      return { key, count, percentage, ...EMOTION_META[key] };
+    }).sort((a, b) => b.count - a.count);
+  
+    const topEmotion = stats[0]?.count > 0 ? stats[0].key : "None";
+  
+    return (
+      <div className="em-stats-view">
+        <div className="em-stats-header">
+          <div className="em-stat-main-card">
+            <span className="em-stat-label">Total Analysed</span>
+            <span className="em-stat-value">{total}</span>
+          </div>
+          <div className="em-stat-main-card">
+            <span className="em-stat-label">Most Frequent Emotion</span>
+            <span className="em-stat-value" style={{ color: EMOTION_META[topEmotion]?.color || '#64748b' }}>
+              {topEmotion}
+            </span>
+          </div>
+        </div>
+  
+        <div className="em-stats-body">
+          <p className="em-section-label">Detailed Representation</p>
+          <div className="em-stats-list">
+            {stats.map(s => (
+              <div key={s.key} className="em-stat-row">
+                <div className="em-stat-info">
+                  <div className="em-stat-name-group">
+                    <span className="em-stat-dot" style={{ background: s.color }}></span>
+                    <span className="em-stat-name">{s.key}</span>
+                  </div>
+                  <span className="em-stat-percentage">{s.percentage}%</span>
+                </div>
+                <div className="em-progress-container">
+                  <div 
+                    className="em-progress-fill" 
+                    style={{ width: `${s.percentage}%`, background: s.color }}
+                  ></div>
+                </div>
+                <p className="em-stat-count">Count: {s.count}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+    );
+  };
+  
   const handleAnalyze = async () => {
     if (!preview) return;
     setLoading(true);
@@ -257,12 +310,16 @@ export default function EmotionModel() {
           onClick={() => setActiveTab('analyze')}>Analyze</button>
           <button className={`em-tab ${activeTab === 'history' ? 'active' : ''}`} 
           onClick={() => setActiveTab('history')}>History ({history.length})</button>
+          <button className={`em-tab ${activeTab === 'stats' ? 'active' : ''}`}
+          onClick={() => setActiveTab('stats')}>Statistics</button>
         </div>
       </div>
 
-      <div className={`em-container ${activeTab === 'analyze' ? 'em-narrow' : 'em-wide'}`}>
-        {activeTab === 'analyze' ? renderAnalyze() : renderHistory()}
-      </div>
+      <div className={`em-container ${activeTab === 'history' ? 'em-wide' : 'em-narrow'}`}>
+  {activeTab === 'analyze' && renderAnalyze()}
+  {activeTab === 'history' && renderHistory()}
+  {activeTab === 'stats' && renderStats()}
+</div>
     </div>
   );
 }
