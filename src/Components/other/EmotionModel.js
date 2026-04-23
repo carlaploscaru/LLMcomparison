@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import './EmotionModel.css';
 
+
 const EMOTION_META = {
   happy:    { color: '#eab308', bg: '#fefce8', text: '#854d0e'},
   sad:      { color: '#60a5fa', bg: '#eff6ff', text: '#1e40af'},
@@ -24,18 +25,42 @@ export default function EmotionModel() {
   const [activeTab, setActiveTab] = useState('analyze');
   const [history, setHistory] = useState([]);
 
-  //load history from localeStorage
+  const [isServerOnline, setIsServerOnline] = useState(false);
+  const [expandedTip, setExpandedTip] = useState(null);
+
+  
   useEffect(() => {
     const saved = localStorage.getItem('emotion_history');
     if (saved) setHistory(JSON.parse(saved));
   }, []);
 
-  //save history to LS 
+  
   useEffect(() => {
     localStorage.setItem('emotion_history', JSON.stringify(history));
   }, [history]);
 
+  // live server check
+  useEffect(() => {
+  const checkServer = async () => {
+    try {
+      const res = await fetch('http://127.0.0.1:5000/predict', { method: 'OPTIONS' });
+      setIsServerOnline(true);
+    } catch {
+      setIsServerOnline(false);
+    }
+  };
+  checkServer();
+  const interval = setInterval(checkServer, 5000); 
+  return () => clearInterval(interval);
+  }, []);
 
+  const tips = [
+    { id: 1, title: "Lighting", desc: "Lights from the front or natural light give the best results. Avoid heavy shadows." },
+    { id: 2, title: "Position", desc: "Keep the face within the center. Keep the face as main focus of the image. The background elements should be minimal." },
+    { id: 3, title: "Expression", desc: "Exaggerated expressions are easier for the AI to add in categories." }
+  ];
+
+  
   const handleFile = (file) => {
     if (!file) return;
     const reader = new FileReader();
@@ -86,7 +111,7 @@ export default function EmotionModel() {
                 <div className="em-stat-info">
                   <div className="em-stat-name-group">
                     <span className="em-stat-dot" style={{ background: s.color }}></span>
-                    <span className="em-stat-name">{s.key}</span>
+                    <span className="em-stat-name">{s.key}:   {s.count}</span>
                   </div>
                   <span className="em-stat-percentage">{s.percentage}%</span>
                 </div>
@@ -96,7 +121,6 @@ export default function EmotionModel() {
                     style={{ width: `${s.percentage}%`, background: s.color }}
                   ></div>
                 </div>
-                <p className="em-stat-count">Count: {s.count}</p>
               </div>
             ))}
           </div>
@@ -152,7 +176,7 @@ export default function EmotionModel() {
 
   const renderAnalyze = () => (
        <div>
-        <div className="em-card">
+        <div className="em-card" style={{marginTop:'50px'}}>
            <p style={{ fontSize: '20px', fontWeight: '600', color: '#0f172a', margin: '0 150px 4px' }}>
             Facial emotion detector
            </p>
@@ -237,9 +261,9 @@ export default function EmotionModel() {
             {sortedScores.map(([emotion, score]) => {
               const m = EMOTION_META[emotion] || EMOTION_META.neutral;
               return (
-                <div key={emotion} className="em-bar-row">
-                  <span style={{ fontSize: '16px', width: '22px' }}>{m.emoji}</span>
-                  <span className="em-bar-label">{emotion}</span>
+                <div key={emotion} className="em-bar-row" style={{marginRight: '32px'}} >
+                  <span style={{ fontSize: '16px', width: '22px'}}></span>
+                  <span className="em-bar-label" style={{marginRight: '32px'}}>{emotion}</span>
                   <div className="em-bar-track">
                     <div className="em-bar-fill" style={{ width: `${score}%`, background: m.color }} />
                   </div>
@@ -302,7 +326,10 @@ export default function EmotionModel() {
     </div>
   );
 
+
+
   return (
+  
     <div className="em-page">
       <div className="em-nav-container">
         <div className="em-tabs">
@@ -315,13 +342,68 @@ export default function EmotionModel() {
         </div>
       </div>
 
-      <div className={`em-container ${activeTab === 'history' ? 'em-wide' : 'em-narrow'}`}>
-  {activeTab === 'analyze' && renderAnalyze()}
-  {activeTab === 'history' && renderHistory()}
-  {activeTab === 'stats' && renderStats()}
-</div>
+      
+      <div className="em-main-layout">
+        {activeTab !== 'history' && (
+          <div className="em-sidebar left" style={{marginTop:'30px'}}>
+            <p className="em-side-title">Enhance Accuracy</p>
+            {tips.map(tip => (
+              <div 
+                key={tip.id} 
+                className={`em-interactive-card ${expandedTip === tip.id ? 'active' : ''}`}
+                onClick={() => setExpandedTip(expandedTip === tip.id ? null : tip.id)}
+              >
+                <div className="em-card-header">
+                  <span className="em-card-bullet">✦</span>
+                  <span className="em-card-label">{tip.title}</span>
+                </div>
+                {expandedTip === tip.id && <p className="em-card-detail">{tip.desc}</p>}
+              </div>
+            ))}
+          </div>
+        )}
+        
+        <div className={`em-container ${activeTab === 'history' ? 'em-wide' : 'em-narrow'}`}>
+        {activeTab === 'analyze' && renderAnalyze()}
+        {activeTab === 'history' && renderHistory()}
+        {activeTab === 'stats' && renderStats()}
+        </div>
+
+        {activeTab !== 'history' && (
+        <div className="em-sidebar right" style={{marginTop:'30px'}}>
+          <p className="em-side-label">System Health</p>
+          
+          <div className={`em-status-card ${isServerOnline ? 'is-online' : 'is-offline'}`}>
+            <div className="em-status-header">
+              <div className={`em-indicator-dot ${isServerOnline ? 'pulse-green' : 'pulse-red'}`}></div>
+              <span className="em-status-text">
+                Server: **{isServerOnline ? 'ONLINE' : 'OFFLINE'}**
+              </span>
+            </div>
+      
+      <div className="em-status-body">
+        <p className="em-status-description">
+          {isServerOnline 
+            ? "Connection made. Ready for images." 
+            : "No response from Flask. Ensure that the backend is running."}
+        </p>
+        
+        {!isServerOnline && (
+          <div className="em-terminal-prompt">
+            <span className="em-prompt-label">Run Command:</span>
+            <code>python app.py</code>
+          </div>
+        )}
+      </div>
     </div>
-  );
+
+  
+  </div>
+  )}
+  </div>
+      
+  </div>
+);
 }
  
 

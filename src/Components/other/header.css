@@ -1,0 +1,156 @@
+
+.em-top-header {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 60px;
+    background: #2d2f36; 
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 24px;
+    z-index: 2000;
+    box-sizing: border-box;
+    border-bottom: 1px solid #3f414a;
+}
+
+.em-header-left {
+    display: flex;
+    align-items: center;
+    gap: 40px;
+}
+
+.em-logo-text {
+    color: #ffffff;
+    font-weight: 800;
+    letter-spacing: 1px;
+    font-size: 16px;
+}
+
+.em-header-links {
+    display: flex;
+    gap: 20px;
+}
+
+.em-nav-link {
+    color: #94a3b8;
+    font-size: 11px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: color 0.2s;
+}
+
+.em-nav-link.active {
+    color: #ffffff;
+    border-bottom: 2px solid #ffffff;
+    padding-bottom: 4px;
+}
+
+.em-header-right {
+    display: flex;
+    align-items: center;
+    gap: 20px;
+}
+
+.em-app-name {
+    color: #94a3b8;
+    font-size: 12px;
+    font-weight: 500;
+}
+
+
+.em-logout-pill {
+    background: #fde047; 
+    color: #1e293b;
+    border: none;
+    padding: 8px 24px;
+    border-radius: 99px; 
+    font-size: 12px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: transform 0.2s, background 0.2s;
+    text-decoration: none;
+}
+
+.em-logout-pill:hover {
+    background: #facc15;
+    transform: scale(1.05);
+}
+
+
+.em-nav-container {
+    top: 60px !important; 
+}
+
+
+.em-top-header {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 64px;
+    background: #1a1c23; 
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 40px;
+    z-index: 2000;
+    box-sizing: border-box;
+}
+
+.em-logo-text {
+    color: #ffffff;
+    font-weight: 800;
+    font-size: 18px;
+    letter-spacing: -0.5px;
+}
+
+.em-header-links {
+    display: flex;
+    gap: 30px;
+    margin-left: 50px;
+}
+
+.em-nav-link {
+    color: #94a3b8;
+    text-decoration: none;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 1px;
+    transition: 0.3s;
+    padding: 22px 0; 
+}
+
+.em-nav-link:hover { color: #ffffff; }
+
+.em-nav-link.active {
+    color: #ffffff;
+    border-bottom: 3px solid #0a7e8b; 
+}
+
+
+.em-logout-pill {
+    background: transparent;
+    color: #ffffff;
+    border: 1.5px solid #3f414a;
+    padding: 8px 20px;
+    border-radius: 6px;
+    font-size: 11px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.3s;
+}
+
+.em-logout-pill:hover {
+    background: #5213ab; 
+    border-color: #a296b1;
+}
+
+
+.em-nav-container {
+    top: 64px !important;
+    background: #ffffff;
+    border-bottom: 2px solid #f1f5f9;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.03);
+}

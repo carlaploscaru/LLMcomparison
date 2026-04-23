@@ -5,6 +5,7 @@ import ChangePassword from "./Components/auth/ChangePass";
 
 
 import Home from "./Pages/home1";
+import Docs from "./Pages/docs";
 
 import { AuthProvider } from "./contexts";
 import { useRoutes } from "react-router-dom";
@@ -26,6 +27,10 @@ function App() {
     {
       path: "/home",
       element: <Home />,
+    },
+    {
+      path: "/docs",
+      element: <Docs />,
     },
     {
       path: "/passreset",
