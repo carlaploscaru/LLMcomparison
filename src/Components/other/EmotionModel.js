@@ -28,6 +28,10 @@ export default function EmotionModel() {
   const [isServerOnline, setIsServerOnline] = useState(false);
   const [expandedTip, setExpandedTip] = useState(null);
 
+  const [statsSubTab, setStatsSubTab] = useState('summary');
+  const [batchFiles, setBatchFiles] = useState([]);
+  const [isBatchLoading, setIsBatchLoading] = useState(false);
+  const [labHistory, setLabHistory] = useState([]);
   
   useEffect(() => {
     const saved = localStorage.getItem('emotion_history');
@@ -77,57 +81,186 @@ export default function EmotionModel() {
     handleFile(e.dataTransfer.files[0]);
   };
 
-  const renderStats = () => {
-    const total = history.length;
+
+
+
+  const handleBatchUpload = async (e) => {
+    const files = Array.from(e.target.files);
+    if (files.length === 0) return;
     
+    setIsBatchLoading(true);
+    const batchResults = []; 
+  
+    for (const file of files) {
+      try {
+        const reader = new FileReader();
+        const base64Promise = new Promise(resolve => {
+          reader.onloadend = () => resolve(reader.result);
+          reader.readAsDataURL(file);
+        });
+        const previewBase64 = await base64Promise;
+        
+        const blob = await (await fetch(previewBase64)).blob();
+        const form = new FormData();
+        form.append('image', blob);
+  
+        const res = await fetch('http://127.0.0.1:5000/predict', { method: 'POST', body: form });
+        const data = await res.json();
+        
+        batchResults.push({
+          id: Date.now() + Math.random(),
+          emotion: data.emotion,
+          confidence: data.confidence
+        });
+      } catch (err) {
+        console.error("Batch item error:", err);
+      }
+    }
+    
+    setLabHistory(batchResults);
+    setIsBatchLoading(false);
+  };
+
+
+  
+  const renderStats = () => {
+    // global history
+    const totalSummary = history.length;
+    const summaryScores = history.map(item => item.confidence);
+    const summaryMean = totalSummary > 0 ? summaryScores.reduce((a, b) => a + b, 0) / totalSummary : 0;
+  
+    // separat analisis
+    const totalLab = labHistory.length;
+    const labScores = labHistory.map(item => item.confidence);
+    const labMean = totalLab > 0 ? labScores.reduce((a, b) => a + b, 0) / totalLab : 0;
+    const labStdDev = totalLab > 0 ? Math.sqrt(labScores.map(x => Math.pow(x - labMean, 2)).reduce((a, b) => a + b, 0) / totalLab) : 0;
+    const labSE = totalLab > 0 ? labStdDev / Math.sqrt(totalLab) : 0;
+  
     const stats = Object.keys(EMOTION_META).map(key => {
       const count = history.filter(item => item.emotion === key).length;
-      const percentage = total > 0 ? Math.round((count / total) * 100) : 0;
+      const percentage = totalSummary > 0 ? Math.round((count / totalSummary) * 100) : 0;
       return { key, count, percentage, ...EMOTION_META[key] };
     }).sort((a, b) => b.count - a.count);
   
-    const topEmotion = stats[0]?.count > 0 ? stats[0].key : "None";
-  
     return (
       <div className="em-stats-view">
-        <div className="em-stats-header">
-          <div className="em-stat-main-card">
-            <span className="em-stat-label">Total Analysed</span>
-            <span className="em-stat-value">{total}</span>
-          </div>
-          <div className="em-stat-main-card">
-            <span className="em-stat-label">Most Frequent Emotion</span>
-            <span className="em-stat-value" style={{ color: EMOTION_META[topEmotion]?.color || '#64748b' }}>
-              {topEmotion}
-            </span>
-          </div>
+        <div className="em-stats-nav">
+          <button className={`em-sub-tab ${statsSubTab === 'summary' ? 'active' : ''}`} onClick={() => setStatsSubTab('summary')}>Overview</button>
+          <button className={`em-sub-tab ${statsSubTab === 'reliability' ? 'active' : ''}`} onClick={() => setStatsSubTab('reliability')}>Batch Analysis</button>
         </div>
   
-        <div className="em-stats-body">
-          <p className="em-section-label">Detailed Representation</p>
-          <div className="em-stats-list">
-            {stats.map(s => (
-              <div key={s.key} className="em-stat-row">
-                <div className="em-stat-info">
-                  <div className="em-stat-name-group">
-                    <span className="em-stat-dot" style={{ background: s.color }}></span>
-                    <span className="em-stat-name">{s.key}:   {s.count}</span>
+        {statsSubTab === 'summary' && (
+          <div className="animate-in">
+            <div className="em-stats-header">
+              <div className="em-stat-main-card">
+                <span className="em-stat-label">Total analysed</span>
+                <span className="em-stat-value">{totalSummary}</span>
+              </div>
+              <div className="em-stat-main-card">
+                <span className="em-stat-label">Top emotion</span>
+                <span className="em-stat-value" style={{ color: stats[0].color }}>{stats[0].key}</span>
+              </div>
+            </div>
+            <div className="em-stats-body">
+              <p className="em-stat-label" style={{marginBottom:'30px'}}>Distribution</p>
+              {stats.map(s => (
+                <div key={s.key} className="em-stat-row">
+                  <div className="em-stat-info">
+                    <span className="em-stat-name">{s.key}: {s.count}</span>
+                    <span className="em-stat-percentage">{s.percentage}%</span>
                   </div>
-                  <span className="em-stat-percentage">{s.percentage}%</span>
+                  <div className="em-progress-container">
+                    <div className="em-progress-fill" style={{ width: `${s.percentage}%`, background: s.color }}></div>
+                  </div>
                 </div>
-                <div className="em-progress-container">
-                  <div 
-                    className="em-progress-fill" 
-                    style={{ width: `${s.percentage}%`, background: s.color }}
-                  ></div>
+              ))}
+            </div>
+
+            <div className="em-stat-main-card" style={{marginTop:'20px'}}>
+                <span className="em-stat-label">Accuracy:</span>
+                <span className="em-stat-value">{summaryMean.toFixed(1)}%</span>
+              </div>
+
+
+
+
+
+              
+          </div>
+        )}
+  
+        {statsSubTab === 'reliability' && (
+          <div className="animate-in">
+            <div className="em-card laboratory-card">
+              <h3 style={{color: '#0a7e8b', marginBottom: '10px'}}>Standard Error Analysis</h3>
+              <p style={{fontSize: '13px', color: '#64748b', marginBottom: '20px'}}>
+                Upload a batch of images for one chosen emotion.
+              </p>
+              
+              <div className="em-batch-upload-box">
+                <input type="file" multiple accept="image/*" onChange={handleBatchUpload} id="batch-input" hidden />
+                <label htmlFor="batch-input" className="em-batch-btn">
+                  {isBatchLoading ? "Processing..." : "Upload images"}
+                </label>
+                {totalLab > 0 && (
+                  <button className="em-clear-lab" onClick={() => setLabHistory([])}>Reset</button>
+                )}
+              </div>
+  
+              {totalLab > 0 ? (
+                <>
+                  <div className="em-se-graphic-container">
+                    <p className="em-section-label">Confidence Plot (images={totalLab})</p>
+                    <div className="em-plot-area">
+                      <div className="em-plot-mean-line" style={{bottom: `${labMean}%`}}>
+                        <span>accuracy</span>
+                      </div>
+                      {labHistory.map((item, idx) => (
+                        <div 
+                          key={item.id} 
+                          className="em-plot-dot" 
+                          style={{
+                            left: `${(idx / (totalLab - 1 || 1)) * 100}%`,
+                            bottom: `${item.confidence}%`,
+                            background: EMOTION_META[item.emotion]?.color
+                          }}
+                          title={`${item.emotion}: ${item.confidence}%`}
+                        />
+                      ))}
+                    </div>
+                    <div className="em-plot-legend">
+                      <span>Accuracy</span>
+                      <span>Image Order</span>
+                    </div>
+                  </div>
+  
+                <div className="em-formula-grid">
+
+                <div className="em-formula-step">
+                  <div className="em-step-label">Accuracy</div>
+                  <div className="em-step-value">{labMean.toFixed(2)}%</div>
+                </div>
+
+
+                <div className={`em-formula-step highlight ${labSE < 5 ? 'stable' : 'unstable'}`}>
+                  <div className="em-step-label">Standard Error</div>
+                  <div className="em-step-value">±{labSE.toFixed(2)}%</div>
                 </div>
               </div>
-            ))}
+                </>
+              ) : (
+                <div className="em-lab-placeholder">
+                  Upload...
+                </div>
+              )}
+            </div>
           </div>
-        </div>
+        )}
       </div>
     );
   };
+  
+
   
   const handleAnalyze = async () => {
     if (!preview) return;
@@ -206,7 +339,7 @@ export default function EmotionModel() {
             ) : (
               <>
                 <div className="em-upload-icon">🖼️</div>
-                <p className="em-upload-title">Drop your image here</p>
+                <p className="em-upload-title">Drop image here</p>
                 <p className="em-upload-sub">JPG, PNG </p>
               </>
             )}
@@ -263,7 +396,7 @@ export default function EmotionModel() {
               return (
                 <div key={emotion} className="em-bar-row" style={{marginRight: '32px'}} >
                   <span style={{ fontSize: '16px', width: '22px'}}></span>
-                  <span className="em-bar-label" style={{marginRight: '32px'}}>{emotion}</span>
+                  <span className="em-bar-label" style={{ width: '68px', minWidth: '68px', display: 'inline-block' }}>{emotion}</span>
                   <div className="em-bar-track">
                     <div className="em-bar-fill" style={{ width: `${score}%`, background: m.color }} />
                   </div>
@@ -291,9 +424,9 @@ export default function EmotionModel() {
                   <img src={heatmap} alt="Grad-CAM heatmap" className="em-heatmap-img" />
                   <div className="em-legend">
                     <span className="em-legend-dot" style={{ background: '#ef4444' }} />
-                    <span className="em-legend-label">Areas the model focused on most</span>
+                    <span className="em-legend-label">More focuse</span>
                     <span className="em-legend-dot" style={{ background: '#3b82f6', marginLeft: '8px' }} />
-                    <span className="em-legend-label">Areas the model focused on less</span>
+                    <span className="em-legend-label">Less focuse</span>
                   </div>
                 </>
               )}
@@ -336,17 +469,17 @@ export default function EmotionModel() {
           <button className={`em-tab ${activeTab === 'analyze' ? 'active' : ''}`} 
           onClick={() => setActiveTab('analyze')}>Analyze</button>
           <button className={`em-tab ${activeTab === 'history' ? 'active' : ''}`} 
-          onClick={() => setActiveTab('history')}>History ({history.length})</button>
+          onClick={() => setActiveTab('history')}>History</button>
           <button className={`em-tab ${activeTab === 'stats' ? 'active' : ''}`}
           onClick={() => setActiveTab('stats')}>Statistics</button>
         </div>
       </div>
 
       
-      <div className="em-main-layout">
+      <div className="em-main-layout" style={{paddingTop:'50px'}}>
         {activeTab !== 'history' && (
           <div className="em-sidebar left" style={{marginTop:'30px'}}>
-            <p className="em-side-title">Enhance Accuracy</p>
+            <p className="em-side-title">Enhance accuracy tips:</p>
             {tips.map(tip => (
               <div 
                 key={tip.id} 
@@ -354,7 +487,7 @@ export default function EmotionModel() {
                 onClick={() => setExpandedTip(expandedTip === tip.id ? null : tip.id)}
               >
                 <div className="em-card-header">
-                  <span className="em-card-bullet">✦</span>
+                  <span className="em-card-bullet">• </span>
                   <span className="em-card-label">{tip.title}</span>
                 </div>
                 {expandedTip === tip.id && <p className="em-card-detail">{tip.desc}</p>}
@@ -384,8 +517,8 @@ export default function EmotionModel() {
       <div className="em-status-body">
         <p className="em-status-description">
           {isServerOnline 
-            ? "Connection made. Ready for images." 
-            : "No response from Flask. Ensure that the backend is running."}
+            ? "Connection made. " 
+            : "No response from Flask."}
         </p>
         
         {!isServerOnline && (
