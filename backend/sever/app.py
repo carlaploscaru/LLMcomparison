@@ -13,13 +13,21 @@ from pytorch_grad_cam import GradCAMPlusPlus
 from pytorch_grad_cam.utils.model_targets import ClassifierOutputTarget
 from pytorch_grad_cam.utils.image import show_cam_on_image
 
+import os
+import time
+
 app = Flask(__name__)
 CORS(app)
 
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+SAVE_DIR = os.path.join(BASE_DIR, "saved_images")
+if not os.path.exists(SAVE_DIR):
+    os.makedirs(SAVE_DIR)
+
+MODEL_PATH = os.path.join(BASE_DIR, "..", "model", "efficientnet_carla_best.pth")
 EMOTIONS = ['angry', 'disgust', 'fear', 'happy', 'sad', 'surprise', 'neutral']
 IMG_SIZE = 224
 
-# architecture 
 class GeM(nn.Module):
     def __init__(self, p=3, eps=1e-6):
         super().__init__()
@@ -87,7 +95,7 @@ def crop_face(pil_img):
     """Detects and crops the face from the image. Returns original if no face found."""
     img_cv = cv2.cvtColor(np.array(pil_img), cv2.COLOR_RGB2BGR)
     
-    # OpenCV built-in face detector
+    # OpenCV face detector
     detector = cv2.CascadeClassifier(
         cv2.data.haarcascades + 'haarcascade_frontalface_default.xml'
     )
@@ -96,12 +104,11 @@ def crop_face(pil_img):
     faces = detector.detectMultiScale(gray, scaleFactor=1.1, minNeighbors=5, minSize=(30, 30))
     
     if len(faces) == 0:
-        return pil_img  # no face found, use original
+        return pil_img  
     
-    # Take the largest face
+   
     x, y, w, h = max(faces, key=lambda f: f[2] * f[3])
-    
-    # Add 20% padding around the face
+
     pad = int(0.2 * max(w, h))
     x1 = max(0, x - pad)
     y1 = max(0, y - pad)
@@ -112,11 +119,20 @@ def crop_face(pil_img):
 
 
 
-# model
 model = EfficientNetCarla(num_classes=7, dropout=0.4)
-checkpoint = torch.load('../model/efficientnet_carla_best.pth', map_location='cpu')
-model.load_state_dict(checkpoint['model_state_dict'])
-model.eval()
+# checkpoint = torch.load('../model/efficientnet_carla_best.pth', map_location='cpu')
+# model.load_state_dict(checkpoint['model_state_dict'])
+# model.eval()
+try:
+    checkpoint = torch.load(MODEL_PATH, map_location='cpu')
+    model.load_state_dict(checkpoint['model_state_dict'])
+    model.eval()
+    print("Model loaded successfully from:", MODEL_PATH)
+except FileNotFoundError:
+    print(f"ERROR: Model file not found at {MODEL_PATH}")
+   
+except Exception as e:
+    print(f"Unexpected Error: {e}")
 
 target_layers = [model.features[4][-1]]
 # cam = GradCAM(model=model, target_layers=target_layers)
@@ -133,53 +149,68 @@ transform = transforms.Compose([
 
 @app.route('/predict', methods=['POST'])
 def predict():
-    file = request.files.get('image')
-    if not file:
-        return jsonify({'error': 'No image provided'}), 400
+    try:
+        file = request.files.get('image')
+        user_label = request.form.get('user_label', 'unlabeled') 
+        # is_batch = request.form.get('is_batch') == 'true'
 
-    pil_img = Image.open(file.stream).convert('RGB')
-    # pil_img = crop_face(pil_img) 
-    input_tensor = transform(pil_img).unsqueeze(0)
+        if not file:
+            return jsonify({'error': 'No image provided'}), 400
 
-    with torch.no_grad():
-        logits = model(input_tensor)
-        probs = torch.softmax(logits, dim=1)[0].numpy()
+        pil_img = Image.open(file.stream).convert('RGB')
 
-    class_idx = int(np.argmax(probs))
 
-    grayscale_cam = cam(
-        input_tensor=input_tensor,
-        targets=[ClassifierOutputTarget(class_idx)]
-    )[0]
+        input_tensor = transform(pil_img).unsqueeze(0)
 
-    # original_float = np.array(pil_img.resize((IMG_SIZE, IMG_SIZE)), dtype=np.float32) / 255.0
-    # blended = show_cam_on_image(original_float, grayscale_cam, use_rgb=True)
-    original_float = np.array(pil_img.resize((IMG_SIZE, IMG_SIZE)), dtype=np.float32) / 255.0
-    # smooth the cam before blending so edges are less harsh
-    grayscale_cam_smooth = cv2.GaussianBlur(grayscale_cam, (15, 15), 0)
-    # normalize after smoothing
-    grayscale_cam_smooth = (grayscale_cam_smooth - grayscale_cam_smooth.min()) / \
-                       (grayscale_cam_smooth.max() - grayscale_cam_smooth.min() + 1e-8)
-    # suppress weak activations — only show top 40% intensity
-    grayscale_cam_smooth = np.where(grayscale_cam_smooth > 0.4, grayscale_cam_smooth, 0.0)
-    
-    # normalize again after smoothing
-    grayscale_cam_smooth = (grayscale_cam_smooth - grayscale_cam_smooth.min()) / \
+        with torch.no_grad():
+            logits = model(input_tensor)
+            probs = torch.softmax(logits, dim=1)[0].numpy()
+
+        class_idx = int(np.argmax(probs))
+        model_emotion = EMOTIONS[class_idx]
+
+        #save to folder
+
+       
+        timestamp = int(time.time() * 1000)
+        filename = f"{model_emotion}-{user_label}-{timestamp}.png"
+        save_path = os.path.join(SAVE_DIR, filename)
+        pil_img.save(save_path)
+       
+
+        grayscale_cam = cam(
+            input_tensor=input_tensor,
+            targets=[ClassifierOutputTarget(class_idx)]
+        )[0]
+
+        # original_float = np.array(pil_img.resize((IMG_SIZE, IMG_SIZE)), dtype=np.float32) / 255.0
+        # blended = show_cam_on_image(original_float, grayscale_cam, use_rgb=True)
+        original_float = np.array(pil_img.resize((IMG_SIZE, IMG_SIZE)), dtype=np.float32) / 255.0
+        grayscale_cam_smooth = cv2.GaussianBlur(grayscale_cam, (15, 15), 0)
+        grayscale_cam_smooth = (grayscale_cam_smooth - grayscale_cam_smooth.min()) / \
                         (grayscale_cam_smooth.max() - grayscale_cam_smooth.min() + 1e-8)
-    blended = show_cam_on_image(original_float, grayscale_cam_smooth, use_rgb=True, image_weight=0.45)
+        grayscale_cam_smooth = np.where(grayscale_cam_smooth > 0.4, grayscale_cam_smooth, 0.0)
+        
+        grayscale_cam_smooth = (grayscale_cam_smooth - grayscale_cam_smooth.min()) / \
+                            (grayscale_cam_smooth.max() - grayscale_cam_smooth.min() + 1e-8)
+        blended = show_cam_on_image(original_float, grayscale_cam_smooth, use_rgb=True, image_weight=0.45)
 
-    buf = io.BytesIO()
-    Image.fromarray(blended).save(buf, format='PNG')
-    heatmap_b64 = base64.b64encode(buf.getvalue()).decode()
+        buf = io.BytesIO()
+        Image.fromarray(blended).save(buf, format='PNG')
+        heatmap_b64 = base64.b64encode(buf.getvalue()).decode()
 
-    scores = {EMOTIONS[i]: round(float(probs[i]) * 100, 1) for i in range(len(EMOTIONS))}
+        scores = {EMOTIONS[i]: round(float(probs[i]) * 100, 1) for i in range(len(EMOTIONS))}
 
-    return jsonify({
-        'emotion': EMOTIONS[class_idx],
-        'confidence': round(float(probs[class_idx]) * 100, 1),
-        'scores': scores,
-        'heatmap': heatmap_b64,
-    })
+        return jsonify({
+            'emotion': model_emotion,
+            'confidence': round(float(probs[class_idx]) * 100, 1),
+            'scores': scores,
+            'heatmap': heatmap_b64,
+            'saved_as': filename,
+        })
+    except Exception as e:
+        print(f"CRASH during predict: {e}")
+        return jsonify({'error': str(e)}), 500
 
 if __name__ == '__main__':
     app.run(port=5000, debug=True)

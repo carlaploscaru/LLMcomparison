@@ -3,13 +3,13 @@ import './EmotionModel.css';
 
 
 const EMOTION_META = {
-  happy:    { color: '#eab308', bg: '#fefce8', text: '#854d0e'},
+  happy:    { color: '#DAA520', bg: '#fefce8', text: '#854d0e'},
   sad:      { color: '#60a5fa', bg: '#eff6ff', text: '#1e40af'},
   angry:    { color: '#ef4444', bg: '#fef2f2', text: '#991b1b'},
   fear:     { color: '#a855f7', bg: '#faf5ff', text: '#6b21a8'},
   surprise: { color: '#fb923c', bg: '#fff7ed', text: '#9a3412'},
   disgust:  { color: '#16a34a', bg: '#f0fdf4', text: '#14532d'},
-  neutral:  { color: '#9ca3af', bg: '#f9fafb', text: '#374151'},
+  neutral:  { color: '#57615A', bg: '#f9fafb', text: '#374151'},
 };
 
 export default function EmotionModel() {
@@ -32,6 +32,8 @@ export default function EmotionModel() {
   const [batchFiles, setBatchFiles] = useState([]);
   const [isBatchLoading, setIsBatchLoading] = useState(false);
   const [labHistory, setLabHistory] = useState([]);
+
+  const [userPrediction, setUserPrediction] = useState('neutral');
   
   useEffect(() => {
     const saved = localStorage.getItem('emotion_history');
@@ -103,6 +105,7 @@ export default function EmotionModel() {
         const blob = await (await fetch(previewBase64)).blob();
         const form = new FormData();
         form.append('image', blob);
+        // form.append('is_batch', 'true');
   
         const res = await fetch('http://127.0.0.1:5000/predict', { method: 'POST', body: form });
         const data = await res.json();
@@ -110,7 +113,7 @@ export default function EmotionModel() {
         batchResults.push({
           id: Date.now() + Math.random(),
           emotion: data.emotion,
-          confidence: data.confidence
+          confidence: data.confidence || 0
         });
       } catch (err) {
         console.error("Batch item error:", err);
@@ -124,18 +127,25 @@ export default function EmotionModel() {
 
   
   const renderStats = () => {
-    // global history
+    const validHistory = history.filter(item => item.userLabel);
+    const totalValid = validHistory.length;
+
+    const matches = validHistory.reduce((acc, item) => {
+      return acc + (item.emotion === item.userLabel ? 1 : 0);
+    }, 0);
+
+    const Accuracy = totalValid > 0 ? (matches / totalValid) * 100 : 0;
     const totalSummary = history.length;
-    const summaryScores = history.map(item => item.confidence);
-    const summaryMean = totalSummary > 0 ? summaryScores.reduce((a, b) => a + b, 0) / totalSummary : 0;
-  
     // separat analisis
     const totalLab = labHistory.length;
     const labScores = labHistory.map(item => item.confidence);
     const labMean = totalLab > 0 ? labScores.reduce((a, b) => a + b, 0) / totalLab : 0;
     const labStdDev = totalLab > 0 ? Math.sqrt(labScores.map(x => Math.pow(x - labMean, 2)).reduce((a, b) => a + b, 0) / totalLab) : 0;
     const labSE = totalLab > 0 ? labStdDev / Math.sqrt(totalLab) : 0;
-  
+
+
+
+   
     const stats = Object.keys(EMOTION_META).map(key => {
       const count = history.filter(item => item.emotion === key).length;
       const percentage = totalSummary > 0 ? Math.round((count / totalSummary) * 100) : 0;
@@ -160,6 +170,18 @@ export default function EmotionModel() {
                 <span className="em-stat-label">Top emotion</span>
                 <span className="em-stat-value" style={{ color: stats[0].color }}>{stats[0].key}</span>
               </div>
+              <div className="em-stat-main-card">
+                 <span className="em-stat-label">Score:</span>
+                 <div className="em-stat-value">
+                    {matches} / {totalValid} 
+                    <span style={{ fontSize: '16px', fontWeight: '500', marginLeft: '8px'}}>  Correct</span>
+                </div>
+              </div>
+              <div className="em-stat-main-card">
+                  <span className="em-stat-label">Accuracy:</span>
+                  <span className="em-stat-value" style={{ color: Accuracy > 70 ? '#10b981' : '#f59e0b' }}>
+                {Accuracy.toFixed(1)}%</span>
+              </div>
             </div>
             <div className="em-stats-body">
               <p className="em-stat-label" style={{marginBottom:'30px'}}>Distribution</p>
@@ -176,16 +198,6 @@ export default function EmotionModel() {
               ))}
             </div>
 
-            <div className="em-stat-main-card" style={{marginTop:'20px'}}>
-                <span className="em-stat-label">Accuracy:</span>
-                <span className="em-stat-value">{summaryMean.toFixed(1)}%</span>
-              </div>
-
-
-
-
-
-              
           </div>
         )}
   
@@ -270,6 +282,7 @@ export default function EmotionModel() {
       const blob = await (await fetch(preview)).blob();
       const form = new FormData();
       form.append('image', blob);
+      form.append('user_label', userPrediction);
 
       const res = await fetch('http://127.0.0.1:5000/predict', { method: 'POST', body: form });
       if (!res.ok) throw new Error(`Server error ${res.status}`);
@@ -290,6 +303,7 @@ export default function EmotionModel() {
       id: Date.now(),
       image: preview,
       emotion: result.emotion,
+      userLabel: userPrediction,
       confidence: result.confidence,
       date: new Date().toLocaleDateString()
     };
@@ -316,7 +330,19 @@ export default function EmotionModel() {
          </div>
 
          <div className="em-card">
-           <p className="em-section-label">Upload image</p>
+           <p className="em-section-label">1. Your Prediction</p>
+            <select 
+              className="em-dropdown" 
+              value={userPrediction} 
+              onChange={(e) => setUserPrediction(e.target.value)}
+            >
+              {Object.keys(EMOTION_META).map(emo => (
+                <option key={emo} value={emo}>{emo.toUpperCase()}</option>
+              ))}
+            </select>
+        </div>
+         <div className="em-card">
+           <p className="em-section-label">2. Upload image</p>
            <div
             className={`em-upload-zone ${dragOver ? 'drag-over' : ''}`}
             onClick={() => fileRef.current.click()}
@@ -364,7 +390,7 @@ export default function EmotionModel() {
 
           {error && <div className="em-error-box"> {error}</div>}
         </div>
-        <button className="em-save-btn" style={{ margin: '10px 230px 4px' }} onClick={saveToHistory}>Add to History</button>
+        <button className="em-save-btn" style={{ margin: '10px 250px 4px' }} onClick={saveToHistory}>Add to History</button>
 
         {result && meta && (
           <div className="em-card">
@@ -446,13 +472,27 @@ export default function EmotionModel() {
             {EMOTION_META[emotionKey].emoji} {emotionKey}
           </div>
           <div className="em-column-items">
-            {history.filter(item => item.emotion === emotionKey).map(item => (
-              <div key={item.id} className="em-history-card">
-                <img src={item.image} alt="history" />
-                <button className="em-delete-btn" onClick={() => deleteFromHistory(item.id)}>×</button>
-                <div className="em-history-info">{item.confidence}%</div>
-              </div>
-            ))}
+          {history.filter(item => item.emotion === emotionKey).map(item => {
+            const isMatch = item.emotion === item.userLabel;
+              return (
+                <div key={item.id} className="em-history-card">
+                  <img src={item.image} alt="history" />
+                  <button className="em-delete-btn" onClick={() => deleteFromHistory(item.id)}>×</button>
+                  
+                  <div className="em-history-info-box">
+                    <div className="em-history-conf">{item.confidence}% confidence</div>
+                    
+                    {/* Human Label Validation */}
+                    <div 
+                      className="em-history-user-label" 
+                      style={{ color: isMatch ? '#10b981' : '#ef4444' }}
+                    >
+                      Your Prediction: {item.userLabel}
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
           </div>
         </div>
       ))}
