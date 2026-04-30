@@ -105,13 +105,14 @@ export default function EmotionModel() {
         const blob = await (await fetch(previewBase64)).blob();
         const form = new FormData();
         form.append('image', blob);
-        // form.append('is_batch', 'true');
+        form.append('is_batch', 'true');
   
         const res = await fetch('http://127.0.0.1:5000/predict', { method: 'POST', body: form });
         const data = await res.json();
         
         batchResults.push({
           id: Date.now() + Math.random(),
+          image: previewBase64,
           emotion: data.emotion,
           confidence: data.confidence || 0
         });
@@ -283,6 +284,7 @@ export default function EmotionModel() {
       const form = new FormData();
       form.append('image', blob);
       form.append('user_label', userPrediction);
+      form.append('is_batch', 'true');
 
       const res = await fetch('http://127.0.0.1:5000/predict', { method: 'POST', body: form });
       if (!res.ok) throw new Error(`Server error ${res.status}`);

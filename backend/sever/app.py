@@ -153,13 +153,13 @@ def predict():
         file = request.files.get('image')
         user_label = request.form.get('user_label', 'unlabeled') 
         # is_batch = request.form.get('is_batch') == 'true'
+        is_batch_str = request.form.get('is_batch', 'false')
+        is_batch = is_batch_str.lower() == 'true'
 
         if not file:
             return jsonify({'error': 'No image provided'}), 400
 
         pil_img = Image.open(file.stream).convert('RGB')
-
-
         input_tensor = transform(pil_img).unsqueeze(0)
 
         with torch.no_grad():
@@ -170,12 +170,14 @@ def predict():
         model_emotion = EMOTIONS[class_idx]
 
         #save to folder
-
-       
-        timestamp = int(time.time() * 1000)
-        filename = f"{model_emotion}-{user_label}-{timestamp}.png"
-        save_path = os.path.join(SAVE_DIR, filename)
-        pil_img.save(save_path)
+        filename = None
+        if not is_batch:
+            timestamp = int(time.time() * 1000)
+            filename = f"{model_emotion}-{user_label}-{timestamp}.png"
+            save_path = os.path.join(SAVE_DIR, filename)
+            pil_img.save(save_path)
+        else:
+            print("Batch => skipping folder save.")
        
 
         grayscale_cam = cam(
@@ -204,10 +206,11 @@ def predict():
         return jsonify({
             'emotion': model_emotion,
             'confidence': round(float(probs[class_idx]) * 100, 1),
-            'scores': scores,
+            'scores': {EMOTIONS[i]: round(float(probs[i]) * 100, 1) for i in range(len(EMOTIONS))},
             'heatmap': heatmap_b64,
             'saved_as': filename,
         })
+        
     except Exception as e:
         print(f"CRASH during predict: {e}")
         return jsonify({'error': str(e)}), 500
