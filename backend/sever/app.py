@@ -172,9 +172,17 @@ def predict():
         #save to folder
         filename = None
         if not is_batch:
+            user_folder = os.path.join(SAVE_DIR, user_label)
+
+            if not os.path.exists(user_folder):
+                os.makedirs(user_folder)
+                print(f"Created new category folder: {user_label}")
+            
             timestamp = int(time.time() * 1000)
-            filename = f"{model_emotion}-{user_label}-{timestamp}.png"
-            save_path = os.path.join(SAVE_DIR, filename)
+            # filename = f"{model_emotion}-{user_label}-{timestamp}.png"
+            # save_path = os.path.join(SAVE_DIR, filename)
+            filename = f"{model_emotion}-{timestamp}.png"
+            save_path = os.path.join(user_folder, filename)
             pil_img.save(save_path)
         else:
             print("Batch => skipping folder save.")
@@ -210,7 +218,7 @@ def predict():
             'heatmap': heatmap_b64,
             'saved_as': filename,
         })
-        
+
     except Exception as e:
         print(f"CRASH during predict: {e}")
         return jsonify({'error': str(e)}), 500
