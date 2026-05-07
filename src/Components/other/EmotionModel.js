@@ -337,8 +337,30 @@ useEffect(() => {
   }
 }, [activeTab]);
 
-  const deleteFromHistory = (id) => {
-    setHistory(history.filter(item => item.id !== id));
+  const deleteFromHistory = async (item) => {
+    if (!window.confirm("Are you sure you want to delete this image?")) return;
+    try {
+      const res = await fetch('http://127.0.0.1:5000/delete_image', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+              folder: item.userLabel, 
+              id: item.id             
+          })
+      });
+
+      if (res.ok) {
+        setHistory(history.filter(prevItem => prevItem.id !== item.id));
+      } else {
+        const errData = await res.json();
+        alert(`Failed to delete: ${errData.error}`);
+      }
+
+    } catch (err) {
+      console.error("Delete request failed", err);
+      alert("Server connection error.");
+  }
+
   };
 
   const sortedScores = result
@@ -503,7 +525,7 @@ useEffect(() => {
               return (
                 <div key={item.id} className="em-history-card">
                   <img src={item.image} alt="history" />
-                  <button className="em-delete-btn" onClick={() => deleteFromHistory(item.id)}>×</button>
+                  <button className="em-delete-btn" onClick={() => deleteFromHistory(item)}>×</button>
                   
                   <div className="em-history-info-box">
                     <div className="em-history-conf">{item.confidence}% confidence</div>

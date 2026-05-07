@@ -16,6 +16,8 @@ from pytorch_grad_cam.utils.image import show_cam_on_image
 import os
 import time
 
+from flask import send_from_directory
+
 app = Flask(__name__)
 CORS(app)
 
@@ -250,10 +252,35 @@ def get_history():
     return jsonify(history_data)
 
 
-from flask import send_from_directory
 @app.route('/saved_images/<path:path>')
 def send_report(path):
     return send_from_directory(SAVE_DIR, path)
+
+
+@app.route('/delete_image', methods=['POST'])
+def delete_image():
+    try:
+        data = request.json
+        folder = data.get('folder')  
+        filename = data.get('id')     
+
+        if not folder or not filename:
+            return jsonify({'error': 'Missing data'}), 400
+
+        file_path = os.path.abspath(os.path.join(SAVE_DIR, folder, filename))
+
+        if os.path.exists(file_path):
+            os.remove(file_path)
+            print(f"SUCCESS: {filename} removed from disk.")
+            return jsonify({'success': True})
+        else:
+            print(f"ERROR: File NOT found at {file_path}")
+            return jsonify({'error': f'File not found at {file_path}'}), 404
+
+    except Exception as e:
+        print(f"CRITICAL ERROR: {e}")
+        return jsonify({'error': str(e)}), 500
+
 
     
 if __name__ == '__main__':
