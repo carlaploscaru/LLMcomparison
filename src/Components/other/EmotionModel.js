@@ -284,33 +284,58 @@ export default function EmotionModel() {
       const form = new FormData();
       form.append('image', blob);
       form.append('user_label', userPrediction);
+      form.append('is_batch', 'false');
 
       const res = await fetch('http://127.0.0.1:5000/predict', { method: 'POST', body: form });
       if (!res.ok) throw new Error(`Server error ${res.status}`);
       const data = await res.json();
 
+  
+
       setResult(data);
       setHeatmap(`data:image/png;base64,${data.heatmap}`);
+      if (data.saved_as) {
+        fetchServerHistory(); 
+    }
     } catch (err) {
       setError(err.message);
     } finally {
       setLoading(false);
     }
+    
+
   };
 
-  const saveToHistory = () => {
-    if (!result) return;
-    const entry = {
-      id: Date.now(),
-      image: preview,
-      emotion: result.emotion,
-      userLabel: userPrediction,
-      confidence: result.confidence,
-      date: new Date().toLocaleDateString()
-    };
-    setHistory([entry, ...history]);
-    alert("Saved to History!");
-  };
+  // const saveToHistory = () => {
+  //   if (!result) return;
+  //   const entry = {
+  //     id: Date.now(),
+  //     image: preview,
+  //     emotion: result.emotion,
+  //     userLabel: userPrediction,
+  //     confidence: result.confidence,
+  //     date: new Date().toLocaleDateString()
+  //   };
+  //   setHistory([entry, ...history]);
+  //   alert("Saved to History!");
+  // };
+
+
+  const fetchServerHistory = async () => {
+    try {
+        const res = await fetch('http://127.0.0.1:5000/get_history');
+        const data = await res.json();
+        setHistory(data);
+    } catch (err) {
+        console.error("Failed to load server history", err);
+    }
+};
+
+useEffect(() => {
+  if (activeTab === 'history') {
+      fetchServerHistory();
+  }
+}, [activeTab]);
 
   const deleteFromHistory = (id) => {
     setHistory(history.filter(item => item.id !== id));
@@ -391,7 +416,7 @@ export default function EmotionModel() {
 
           {error && <div className="em-error-box"> {error}</div>}
         </div>
-        <button className="em-save-btn" style={{ margin: '10px 250px 4px' }} onClick={saveToHistory}>Add to History</button>
+        {/* <button className="em-save-btn" style={{ margin: '10px 250px 4px' }} onClick={saveToHistory}>Add to History</button> */}
 
         {result && meta && (
           <div className="em-card">
@@ -483,7 +508,7 @@ export default function EmotionModel() {
                   <div className="em-history-info-box">
                     <div className="em-history-conf">{item.confidence}% confidence</div>
                     
-                    {/* Human Label Validation */}
+                    
                     <div 
                       className="em-history-user-label" 
                       style={{ color: isMatch ? '#10b981' : '#ef4444' }}

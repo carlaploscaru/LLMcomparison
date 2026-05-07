@@ -223,8 +223,38 @@ def predict():
         print(f"CRASH during predict: {e}")
         return jsonify({'error': str(e)}), 500
 
+
+
+
+
+@app.route('/get_history', methods=['GET'])
+def get_history():
+    history_data = []
+    if os.path.exists(SAVE_DIR):
+        for emotion_folder in os.listdir(SAVE_DIR):
+            folder_path = os.path.join(SAVE_DIR, emotion_folder)
+            
+            if os.path.isdir(folder_path):
+                for filename in os.listdir(folder_path):
+                    if filename.endswith(('.png', '.jpg', '.jpeg')):
+                        parts = filename.replace('.png', '').replace('.jpg', '').split('-')
+                        model_emotion = parts[0]
+                        
+                        history_data.append({
+                            "id": filename,
+                            "image": f"http://127.0.0.1:5000/saved_images/{emotion_folder}/{filename}",
+                            "emotion": model_emotion,
+                            "userLabel": emotion_folder, 
+                            "date": "Server File"
+                        })
+    return jsonify(history_data)
+
+
+from flask import send_from_directory
+@app.route('/saved_images/<path:path>')
+def send_report(path):
+    return send_from_directory(SAVE_DIR, path)
+
+    
 if __name__ == '__main__':
     app.run(port=5000, debug=True)
-
-
-
