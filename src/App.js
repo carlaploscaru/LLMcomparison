@@ -13,10 +13,6 @@ import { useRoutes } from "react-router-dom";
 function App() {
   const routesArray = [
     {
-      path: "*",
-      element: <Login />,
-    },
-    {
       path: "/login",
       element: <Login />,
     },
@@ -35,7 +31,11 @@ function App() {
     {
       path: "/passreset",
       element: <ChangePassword />,
-    }
+    },
+    {
+      path: "*",
+      element: <Login />,
+    },
   ];
   let routesElement = useRoutes(routesArray);
   return (

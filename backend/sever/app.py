@@ -181,9 +181,13 @@ def predict():
                 print(f"Created new category folder: {user_label}")
             
             timestamp = int(time.time() * 1000)
-            # filename = f"{model_emotion}-{user_label}-{timestamp}.png"
-            # save_path = os.path.join(SAVE_DIR, filename)
-            filename = f"{model_emotion}-{timestamp}.png"
+           
+            # filename = f"{model_emotion}-{timestamp}.png"
+
+
+            conf_score = round(float(probs[class_idx]) * 100, 1)
+            filename = f"{model_emotion}-{conf_score}-{timestamp}.png"
+            
             save_path = os.path.join(user_folder, filename)
             pil_img.save(save_path)
         else:
@@ -239,13 +243,20 @@ def get_history():
             if os.path.isdir(folder_path):
                 for filename in os.listdir(folder_path):
                     if filename.endswith(('.png', '.jpg', '.jpeg')):
-                        parts = filename.replace('.png', '').replace('.jpg', '').split('-')
-                        model_emotion = parts[0]
+                        name_part = filename.rsplit('.', 1)[0] 
+                        parts = name_part.split('-')
+                        if len(parts) >= 2:
+                            model_emotion = parts[0]
+                            conf_value = parts[1] 
+                        else:
+                            model_emotion = parts[0]
+                            conf_value = "0"
                         
                         history_data.append({
                             "id": filename,
                             "image": f"http://127.0.0.1:5000/saved_images/{emotion_folder}/{filename}",
                             "emotion": model_emotion,
+                            "confidence": conf_value,
                             "userLabel": emotion_folder, 
                             "date": "Server File"
                         })

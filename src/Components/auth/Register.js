@@ -34,7 +34,7 @@ const Register = () => {
         password
       );
       const user = userCredential.user;
-
+     
       if (user) {
         alert(
           `Verification email sent to ${user.email}. Please verify before logging in.`
@@ -67,7 +67,7 @@ const Register = () => {
     }
   };
 
-  if (userLoggedIn) return <Navigate to="/login" replace />;
+  // if (userLoggedIn) return <Navigate to="/login" replace />;
 
   return (
     <main className="register-container">
