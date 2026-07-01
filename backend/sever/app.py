@@ -20,13 +20,16 @@ from flask import send_from_directory
 
 app = Flask(__name__)
 CORS(app)
+CORS(app, resources={r"/*": {"origins": ["https://emotion-detection-environment.netlify.app",
+"http://localhost:3000"]}})
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 SAVE_DIR = os.path.join(BASE_DIR, "saved_images")
 if not os.path.exists(SAVE_DIR):
     os.makedirs(SAVE_DIR)
 
-MODEL_PATH = os.path.join(BASE_DIR, "..", "model", "efficientnet_carla_best.pth")
+# MODEL_PATH = os.path.join(BASE_DIR, "..", "model", "efficientnet_carla_best.pth")
+MODEL_PATH = os.path.join(BASE_DIR, "efficientnet_carla_best.pth")
 EMOTIONS = ['angry', 'disgust', 'fear', 'happy', 'sad', 'surprise', 'neutral']
 IMG_SIZE = 224
 
@@ -122,7 +125,7 @@ def crop_face(pil_img):
 
 
 model = EfficientNetCarla(num_classes=7, dropout=0.4)
-# checkpoint = torch.load('../model/efficientnet_carla_best.pth', map_location='cpu')
+# checkpoint = torch.load('../model/efficientnet_carla_best.pth', map_location='cpu')   
 # model.load_state_dict(checkpoint['model_state_dict'])
 # model.eval()
 try:
@@ -236,6 +239,7 @@ def predict():
 @app.route('/get_history', methods=['GET'])
 def get_history():
     history_data = []
+    base_url = request.host_url.rstrip('/')
     if os.path.exists(SAVE_DIR):
         for emotion_folder in os.listdir(SAVE_DIR):
             folder_path = os.path.join(SAVE_DIR, emotion_folder)
@@ -254,7 +258,8 @@ def get_history():
                         
                         history_data.append({
                             "id": filename,
-                            "image": f"http://127.0.0.1:5000/saved_images/{emotion_folder}/{filename}",
+                            # "image": f"http://127.0.0.1:5000/saved_images/{emotion_folder}/{filename}",
+                            "image": f"{base_url}/saved_images/{emotion_folder}/{filename}",
                             "emotion": model_emotion,
                             "confidence": conf_value,
                             "userLabel": emotion_folder, 
@@ -297,3 +302,4 @@ def delete_image():
 if __name__ == '__main__':
     # app.run(port=5000, debug=True)
     app.run(host='0.0.0.0', port=7860)
+    

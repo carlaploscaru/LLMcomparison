@@ -1,15 +1,17 @@
-# Use Python 3.9
-FROM python:3.9
 
-# Set the working directory
+FROM python:3.11
+
 WORKDIR /code
 
-# Copy requirements and install
+
+RUN apt-get update && apt-get install -y \
+    libgl1 \
+    libglib2.0-0 \
+    && rm -rf /var/lib/apt/lists/*
+
 COPY ./requirements.txt /code/requirements.txt
 RUN pip install --no-cache-dir --upgrade -r /code/requirements.txt
 
-# Copy all project files (including your model and app.py)
 COPY . .
 
-# Command to run the Flask app
-CMD ["gunicorn", "-b", "0.0.0.0:7860", "app:app"]
+CMD ["gunicorn", "--bind", "0.0.0.0:7860", "app:app"]
